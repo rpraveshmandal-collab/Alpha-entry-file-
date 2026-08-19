@@ -1,0 +1,5 @@
+App Name: Raid Report
+Android Application ID: com.raidreport.mobile
+Framework: Capacitor 7
+Entry file: www/index.html
+APK build: Android Studio / Gradle

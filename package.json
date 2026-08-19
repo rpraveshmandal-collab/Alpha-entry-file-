@@ -1,0 +1,17 @@
+{
+  "name": "raid-report-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mobile-friendly Raid Report entry app",
+  "scripts": {
+    "sync": "cap sync android",
+    "open:android": "cap open android",
+    "build:android": "cd android && gradlew assembleDebug",
+    "build:release": "cd android && gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.0",
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/cli": "^7.4.0"
+  }
+}
