@@ -1,8 +1,0 @@
-{
-  "appId": "com.raidreport.mobile",
-  "appName": "Raid Report",
-  "webDir": "www",
-  "server": {
-    "androidScheme": "https"
-  }
-}
