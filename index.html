@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Raid Report Entry</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+header{background:#174a7c;color:#fff;padding:18px 16px;position:sticky;top:0;z-index:5}
+header h1{font-size:20px;margin:0} header p{font-size:12px;margin:6px 0 0;opacity:.9}
+nav{display:flex;gap:8px;padding:10px;background:#fff;position:sticky;top:78px;z-index:4;box-shadow:0 2px 8px #0001}
+nav button{flex:1;border:0;border-radius:10px;padding:12px 8px;font-weight:bold;background:#e7eef6;color:#174a7c}
+nav button.active{background:#174a7c;color:#fff}
+main{padding:14px;max-width:700px;margin:auto}.card{background:#fff;border-radius:14px;padding:15px;margin-bottom:12px;box-shadow:0 2px 10px #00000012}
+label{display:block;font-weight:bold;font-size:14px;margin:12px 0 6px}
+input,textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:13px;font-size:16px;background:#fff}
+textarea{min-height:86px;resize:vertical}.photo{border:2px dashed #8ab58d;background:#eff8ef;border-radius:12px;padding:14px;text-align:center}
+.photo img{max-width:100%;max-height:260px;border-radius:10px;margin-top:10px}
+.primary,.secondary,.danger{width:100%;border:0;border-radius:11px;padding:14px;margin-top:10px;font-size:16px;font-weight:bold}
+.primary{background:#174a7c;color:white}.secondary{background:#e7eef6;color:#174a7c}.danger{background:#fee2e2;color:#b91c1c}
+.entry{border:1px solid #dbe3ec;border-radius:12px;padding:12px;margin:10px 0;background:#fafcff}
+.entry b{color:#174a7c}.small{font-size:12px;color:#64748b}
+.hidden{display:none}.empty{text-align:center;padding:30px;color:#64748b}
+</style>
+</head>
+<body>
+<header><h1>📋 Raid Report</h1><p>मोबाइल User-Friendly Entry App</p></header>
+<nav>
+<button id="newBtn" class="active" onclick="show('new')">➕ New Entry</button>
+<button id="listBtn" onclick="show('list')">📑 Entries</button>
+</nav>
+<main>
+<section id="new">
+<div class="card">
+<label>Entry करने वाले का नाम</label><input id="entryBy" placeholder="नाम (वैकल्पिक)"><label>Date Of Raid</label><input id="date" type="date">
+<label>Name & Address of Entity</label><textarea id="entity"></textarea>
+<label>Description of Item Seized</label><textarea id="item"></textarea>
+<label>Complainant Name</label><input id="complainant">
+<label>Name of Accused Arrested</label><textarea id="accused"></textarea>
+<label>Police permission for raid given by</label><input id="permission">
+<label>Police Officials</label><textarea id="officials"></textarea>
+<label>FIR Registration no & section applied</label><textarea id="fir"></textarea>
+<label>Police Station Name</label><input id="station">
+
+<label>📷 JPG Photo</label>
+<div class="photo">
+<input id="photo" type="file" accept="image/*" capture="environment" onchange="previewPhoto(event)">
+<img id="preview" class="hidden">
+<div id="photoText" class="small">मोबाइल गैलरी/कैमरा से फोटो चुनें</div>
+</div>
+
+<button class="primary" onclick="saveEntry()">💾 Save New Entry</button>
+<button class="secondary" onclick="clearForm()">🧹 Clear Form</button>
+</div>
+</section>
+
+<section id="list" class="hidden">
+<div class="card">
+<h3 style="margin-top:0">📑 Saved Entries</h3>
+<div id="entries"></div>
+<button class="primary" onclick="exportExcel()">📊 Export to Excel (.xlsx)</button>
+<button class="secondary" onclick="exportPDF()">📄 Export to PDF</button>
+<button class="secondary" onclick="exportCSV()">📤 Export to CSV</button>
+<button class="primary" onclick="exportBackup()">💾 Backup / Export Data</button>
+<button class="secondary" onclick="document.getElementById('importFile').click()">📥 Import Data</button>
+<button class="primary" onclick="cloudUpload()">☁️ Cloud Sync / Upload</button>
+<button class="secondary" onclick="cloudDownload()">☁️ दूसरे फोन से Data लोड करें</button>
+<div id="cloudStatus" class="small" style="margin-top:10px">☁️ Cloud database अभी configure नहीं किया गया है।</div>
+<input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" style="display:none" onchange="importData(event)">
+<div class="small" style="margin-top:10px">Backup से आपकी सभी Entries और JPG फोटो एक साथ दूसरे फोन में भी ले जा सकते हैं।</div>
+<button class="danger" onclick="deleteAll()">🗑️ Delete All Entries</button>
+</div>
+</section>
+</main>
+<script>
+let photoData="";
+function show(x){
+ document.getElementById('new').classList.toggle('hidden',x!=='new');
+ document.getElementById('list').classList.toggle('hidden',x!=='list');
+ document.getElementById('newBtn').classList.toggle('active',x==='new');
+ document.getElementById('listBtn').classList.toggle('active',x==='list');
+ if(x==='list') render();
+}
+function previewPhoto(e){
+ const f=e.target.files[0]; if(!f)return;
+ const r=new FileReader(); r.onload=()=>{photoData=r.result;let im=document.getElementById('preview');im.src=photoData;im.classList.remove('hidden');document.getElementById('photoText').textContent=f.name};r.readAsDataURL(f);
+}
+function val(id){return document.getElementById(id).value.trim()}
+async function saveEntry(){
+ const entry={id:Date.now(),entryBy:val('entryBy'),date:val('date'),entity:val('entity'),item:val('item'),complainant:val('complainant'),accused:val('accused'),permission:val('permission'),officials:val('officials'),fir:val('fir'),station:val('station'),photo:photoData};
+ if(!entry.date && !entry.entity && !entry.item){alert('कम से कम Date या मुख्य विवरण भरें।');return}
+ let a=JSON.parse(localStorage.getItem('raidEntries')||'[]');a.push(entry);localStorage.setItem('raidEntries',JSON.stringify(a));
+ clearForm();show('list');
+ if(cloudReady()) { try { await cloudUploadEntries([entry]); alert('✅ Entry Save और Cloud में Submit हो गई।'); } catch(e) { alert('✅ Entry फोन में Save हो गई, लेकिन Cloud Sync नहीं हुआ। Entries में जाकर फिर Cloud Sync करें।'); } } else { alert('✅ नई Entry सफलतापूर्वक Save हो गई।'); }
+}
+function clearForm(){
+ ['entryBy','date','entity','item','complainant','accused','permission','officials','fir','station'].forEach(id=>document.getElementById(id).value='');
+ document.getElementById('photo').value='';photoData='';document.getElementById('preview').classList.add('hidden');document.getElementById('photoText').textContent='मोबाइल गैलरी/कैमरा से फोटो चुनें';
+}
+function render(){
+ let a=JSON.parse(localStorage.getItem('raidEntries')||'[]'), box=document.getElementById('entries');
+ if(!a.length){box.innerHTML='<div class="empty">अभी कोई Entry नहीं है।<br>ऊपर “New Entry” से पहली Entry बनाएं।</div>';return}
+ box.innerHTML=a.slice().reverse().map((e,i)=>`<div class="entry"><b>Entry ${a.length-i}</b><div class="small">${e.date||''} ${e.station?'• '+e.station:''} ${e.entryBy?'• By: '+esc(e.entryBy):''}</div><p><b>Entity:</b> ${esc(e.entity)}</p><p><b>Accused:</b> ${esc(e.accused)}</p>${e.photo?'<img src="'+e.photo+'" style="max-width:100%;max-height:140px;border-radius:8px">':''}<button class="danger" onclick="removeEntry(${e.id})">Delete</button></div>`).join('');
+}
+function esc(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function removeEntry(id){let a=JSON.parse(localStorage.getItem('raidEntries')||'[]').filter(x=>x.id!==id);localStorage.setItem('raidEntries',JSON.stringify(a));render()}
+function deleteAll(){if(confirm('सभी Entries हटानी हैं?')){localStorage.removeItem('raidEntries');render()}}
+async function exportCSV(){
+ let a=getEntries();if(!a.length){alert('Export करने के लिए कोई Entry नहीं है।');return}
+ let headers=['ID','Entry By','Date','Entity','Item Seized','Complainant','Accused','Permission','Officials','FIR','Police Station'];
+ let rows=a.map(e=>[e.id,e.entryBy||'',e.date,e.entity,e.item,e.complainant,e.accused,e.permission,e.officials,e.fir,e.station]);
+ let csv=[headers,...rows].map(r=>r.map(x=>`"${String(x??'').replaceAll('"','""')}"`).join(',')).join('\n');
+ await nativeSaveText(csv,'Raid_Report_Entries.csv','text/csv');
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="cloud-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script>
+function getEntries(){return JSON.parse(localStorage.getItem('raidEntries')||'[]')}
+
+async function nativeSaveText(text, fileName, mimeType){
+ try{
+   if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem){
+     const {Filesystem}=window.Capacitor.Plugins;
+     await Filesystem.writeFile({path:fileName,data:btoa(unescape(encodeURIComponent(text))),directory:'DOCUMENTS',recursive:true});
+     if(window.Capacitor.Plugins.Share){
+       const {uri}=await Filesystem.getUri({path:fileName,directory:'DOCUMENTS'});
+       await window.Capacitor.Plugins.Share.share({title:fileName,text:'Raid Report export',url:uri});
+     } else alert('File saved: '+fileName);
+     return;
+   }
+ }catch(err){console.log('Native save error',err)}
+ // Browser fallback
+ const blob=new Blob([text],{type:mimeType+';charset=utf-8'});
+ const url=URL.createObjectURL(blob), a=document.createElement('a');
+ a.href=url;a.download=fileName;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+async function nativeSaveDataUrl(dataUrl,fileName){
+ try{
+   if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem){
+     const {Filesystem}=window.Capacitor.Plugins;
+     const base64=dataUrl.split(',')[1];
+     await Filesystem.writeFile({path:fileName,data:base64,directory:'DOCUMENTS',recursive:true});
+     if(window.Capacitor.Plugins.Share){
+       const {uri}=await Filesystem.getUri({path:fileName,directory:'DOCUMENTS'});
+       await window.Capacitor.Plugins.Share.share({title:fileName,url:uri});
+     } else alert('File saved: '+fileName);
+     return;
+   }
+ }catch(err){console.log('Native binary save error',err)}
+}
+
+async function exportBackup(){
+ let a=getEntries(); if(!a.length){alert('Export करने के लिए कोई Entry नहीं है।');return}
+ const backup={app:'Raid Report',version:3,exportedAt:new Date().toISOString(),entries:a};
+ const text=JSON.stringify(backup);
+ await nativeSaveText(text,'Raid_Report_Backup.json','application/json');
+}
+
+async function importData(event){
+ const f=event.target.files[0]; if(!f)return;
+ try{
+   const text=await f.text();
+   let imported=[];
+   if(f.name.toLowerCase().endsWith('.json')){
+     const obj=JSON.parse(text);
+     imported=Array.isArray(obj)?obj:(obj.entries||[]);
+   }else{
+     imported=parseCSV(text);
+   }
+   imported=imported.filter(x=>x && (x.date||x.entity||x.item||x.complainant||x.accused||x.station)).map(x=>({
+     id:Number(x.id)||Date.now()+Math.floor(Math.random()*1000000),
+     entryBy:x.entryBy||x['Entry By']||'',
+     date:x.date||'',entity:x.entity||'',item:x.item||'',complainant:x.complainant||'',
+     accused:x.accused||'',permission:x.permission||'',officials:x.officials||'',
+     fir:x.fir||'',station:x.station||'',photo:x.photo||''
+   }));
+   if(!imported.length){alert('इस फाइल में कोई मान्य Raid Entry नहीं मिली।');return}
+   const existing=getEntries();
+   const replace=confirm('OK = पुराना डेटा हटाकर Import करें\\nCancel = पुराने डेटा में नई Entries जोड़ें');
+   const result=replace?imported:existing.concat(imported);
+   localStorage.setItem('raidEntries',JSON.stringify(result));
+   render();
+   alert('✅ '+imported.length+' Entry सफलतापूर्वक Import हो गई।');
+ }catch(err){alert('❌ Import नहीं हो पाया। कृपया सही JSON/CSV Backup फाइल चुनें।');console.error(err)}
+ event.target.value='';
+}
+
+function parseCSV(text){
+ const lines=text.replace(/\r/g,'').split('\n').filter(Boolean);
+ if(lines.length<2)return [];
+ const parseLine=line=>{
+   let out=[],cur='',quoted=false;
+   for(let i=0;i<line.length;i++){const c=line[i],n=line[i+1];
+     if(c==='"'&&quoted&&n==='"'){cur+='"';i++;continue}
+     if(c==='"'){quoted=!quoted;continue}
+     if(c===','&&!quoted){out.push(cur);cur='';continue}
+     cur+=c;
+   }out.push(cur);return out;
+ };
+ const h=parseLine(lines[0]).map(x=>x.trim());
+ return lines.slice(1).map(line=>{
+   const v=parseLine(line), o={};
+   h.forEach((k,i)=>o[k]=v[i]||'');
+   return {
+     id:o.ID||o.id,entryBy:o['Entry By']||o.entryBy||'',date:o.Date||'',
+     entity:o.Entity||o['Name & Address of Entity']||'',
+     item:o['Item Seized']||o['Description of Item Seized']||'',
+     complainant:o.Complainant||o['Complainant Name']||'',
+     accused:o.Accused||o['Name of Accused Arrested']||'',
+     permission:o.Permission||o['Police permission for raid given by']||'',
+     officials:o.Officials||o['Police Officials']||'',
+     fir:o.FIR||o['FIR Registration no & section applied']||'',
+     station:o['Police Station']||o['Police Station Name']||'',
+     photo:''
+   };
+ });
+}
+
+async function exportExcel(){
+ let a=getEntries(); if(!a.length){alert('Export करने के लिए कोई Entry नहीं है।');return}
+ if(window.XLSX){
+   try{
+    let rows=a.map((e,i)=>({'Entry No':i+1,'Entry By':e.entryBy||'','Date Of Raid':e.date,'Name & Address of Entity':e.entity,'Description of Item Seized':e.item,'Complainant Name':e.complainant,'Name of Accused Arrested':e.accused,'Police permission for raid given by':e.permission,'Police Officials':e.officials,'FIR Registration no & section applied':e.fir,'Police Station Name':e.station}));
+    let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Raid Reports');
+    const b=XLSX.write(wb,{bookType:'xlsx',type:'base64'});
+    await nativeSaveDataUrl('data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+b,'Raid_Report_Entries.xlsx');return;
+   }catch(err){console.log(err)}
+ }
+ alert('Excel library उपलब्ध नहीं है। कृपया Backup/CSV Export इस्तेमाल करें।');
+}
+
+async function exportPDF(){
+ let a=getEntries(); if(!a.length){alert('Export करने के लिए कोई Entry नहीं है।');return}
+ if(window.jspdf){
+  try{
+   const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+   doc.setFontSize(16);doc.text('Raid Report Entries',14,15);
+   let body=a.map((e,i)=>[i+1,e.date||'',e.station||'',e.entity||'',e.item||'',e.complainant||'',e.accused||'',e.fir||'']);
+   doc.autoTable({startY:22,head:[['No.','Date','Police Station','Entity / Address','Item Seized','Complainant','Accused','FIR / Section']],body,styles:{fontSize:7,cellPadding:2,overflow:'linebreak'},margin:{left:8,right:8}});
+   const b=doc.output('datauristring');await nativeSaveDataUrl(b,'Raid_Report_Entries.pdf');return;
+  }catch(err){console.log(err)}
+ }
+ alert('PDF library उपलब्ध नहीं है। कृपया Backup/CSV Export इस्तेमाल करें।');
+}
+</script>
+
+<script>
+let cloudClient=null;
+function cloudReady(){
+  const c=window.RAID_CLOUD||{};
+  if(!window.supabase || !c.url || c.url.includes('YOUR_PROJECT') || !c.anonKey || c.anonKey.includes('YOUR_SUPABASE')) return false;
+  if(!cloudClient) cloudClient=window.supabase.createClient(c.url,c.anonKey);
+  return true;
+}
+function setCloudStatus(t){const el=document.getElementById('cloudStatus');if(el)el.textContent=t;}
+function cloudEntry(e){return {id:String(e.id),entry_by:e.entryBy||'',date:e.date||'',entity:e.entity||'',item:e.item||'',complainant:e.complainant||'',accused:e.accused||'',permission:e.permission||'',officials:e.officials||'',fir:e.fir||'',station:e.station||'',photo:e.photo||'',updated_at:new Date().toISOString()};}
+async function cloudUploadEntries(entries){
+ if(!cloudReady()) throw new Error('Cloud database configure नहीं है');
+ const rows=entries.map(cloudEntry);
+ const {error}=await cloudClient.from(window.RAID_CLOUD.table).upsert(rows,{onConflict:'id'});
+ if(error) throw error;
+ return rows.length;
+}
+async function cloudUpload(){
+ if(!cloudReady()){alert('Cloud database configure नहीं है। SUPABASE_SETUP.md में दिए steps पूरे करके www/cloud-config.js में URL और key डालें।');return}
+ const a=getEntries(); if(!a.length){alert('Upload करने के लिए कोई local Entry नहीं है।');return}
+ try{
+   setCloudStatus('☁️ Cloud पर Upload हो रहा है...');
+   const count=await cloudUploadEntries(a);
+   setCloudStatus('✅ '+count+' Entries Cloud Database में सुरक्षित हैं।');
+   alert('✅ Data Cloud Database में Upload हो गया।');
+ }catch(e){console.error(e);setCloudStatus('❌ Cloud Upload failed: '+e.message);alert('Cloud Upload नहीं हुआ: '+e.message)}
+}
+async function cloudDownload(){
+ if(!cloudReady()){alert('Cloud database configure नहीं है। SUPABASE_SETUP.md देखें।');return}
+ try{
+   setCloudStatus('☁️ Cloud से Data लोड हो रहा है...');
+   const {data,error}=await cloudClient.from(window.RAID_CLOUD.table).select('*').order('date',{ascending:false});
+   if(error) throw error;
+   if(!data || !data.length){setCloudStatus('☁️ Cloud में अभी कोई Entry नहीं है।');alert('Cloud Database में कोई Entry नहीं मिली।');return}
+   const imported=data.map(x=>({id:Number(x.id)||Date.now()+Math.random()*1000000,entryBy:x.entry_by||'',date:x.date||'',entity:x.entity||'',item:x.item||'',complainant:x.complainant||'',accused:x.accused||'',permission:x.permission||'',officials:x.officials||'',fir:x.fir||'',station:x.station||'',photo:x.photo||''}));
+   const current=getEntries();
+   const byId=new Map(current.map(x=>[String(x.id),x])); imported.forEach(x=>byId.set(String(x.id),x));
+   const merged=[...byId.values()]; localStorage.setItem('raidEntries',JSON.stringify(merged)); render();
+   setCloudStatus('✅ '+imported.length+' Cloud Entries ऐप में लोड हो गईं।');
+   alert('✅ Cloud Database का Data इस फोन में दिखने लगा है।');
+ }catch(e){console.error(e);setCloudStatus('❌ Cloud Download failed: '+e.message);alert('Cloud Data load नहीं हुआ: '+e.message)}
+}
+</script>
+</body></html>
