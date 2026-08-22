@@ -1,0 +1,18 @@
+{
+  "name": "Raid Report - Cloud Backup",
+  "short_name": "Raid Report",
+  "description": "Mobile User-Friendly Raid Entry with Cloud Backup",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#174a7c",
+  "theme_color": "#174a7c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2921/2921222.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
