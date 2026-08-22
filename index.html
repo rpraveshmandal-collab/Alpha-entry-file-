@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raid Report - Supabase Cloud</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#174a7c">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+header{background:#174a7c;color:#fff;padding:18px 16px;position:sticky;top:0;z-index:5}
+header h1{font-size:20px;margin:0} header p{font-size:12px;margin:6px 0 0;opacity:.9}
+nav{display:flex;gap:8px;padding:10px;background:#fff;position:sticky;top:78px;z-index:4;box-shadow:0 2px 8px #0001}
+nav button{flex:1;border:0;border-radius:10px;padding:12px 8px;font-weight:bold;background:#e7eef6;color:#174a7c}
+nav button.active{background:#174a7c;color:#fff}
+main{padding:14px;max-width:700px;margin:auto}.card{background:#fff;border-radius:14px;padding:15px;margin-bottom:12px;box-shadow:0 2px 10px #00000012}
+label{display:block;font-weight:bold;font-size:14px;margin:12px 0 6px}
+input,textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:13px;font-size:16px;background:#fff}
+textarea{min-height:86px;resize:vertical}.photo{border:2px dashed #8ab58d;background:#eff8ef;border-radius:12px;padding:14px;text-align:center}
+.photo img{max-width:100%;max-height:260px;border-radius:10px;margin-top:10px}
+.primary,.secondary,.danger,.cloud{width:100%;border:0;border-radius:11px;padding:14px;margin-top:10px;font-size:16px;font-weight:bold}
+.primary{background:#174a7c;color:white}.secondary{background:#e7eef6;color:#174a7c}.danger{background:#fee2e2;color:#b91c1c}
+.cloud{background:#0f766e;color:white}
+.entry{border:1px solid #dbe3ec;border-radius:12px;padding:12px;margin:10px 0;background:#fafcff}
+.entry b{color:#174a7c}.small{font-size:12px;color:#64748b}
+.hidden{display:none!important}
+.login-overlay{position:fixed;inset:0;background:#f4f7fb;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{width:100%;max-width:420px;background:#fff;border-radius:18px;padding:24px;box-shadow:0 8px 30px #0002}
+.userbar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 14px;background:#e7eef6;color:#174a7c;font-size:13px;flex-wrap:wrap}
+.userbar button{border:0;border-radius:8px;padding:7px 10px;background:#fff;color:#b91c1c;font-weight:bold}
+.badge{display:inline-block;padding:4px 8px;border-radius:20px;font-size:11px;font-weight:bold}
+.badge-green{background:#dcfce7;color:#166534}.badge-orange{background:#ffedd5;color:#9a3412}.badge-blue{background:#dbeafe;color:#1e40af}
+.cloud-status{padding:10px;border-radius:10px;background:#f0fdfa;border:1px solid #99f6e0;margin-top:10px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
+    <h2>🔐 Raid Report Login</h2>
+    <label>Username</label><input id="loginUser" type="text" placeholder="admin">
+    <label>Password</label><input id="loginPass" type="password" placeholder="1234">
+    <button class="primary" onclick="doLogin()">Login</button>
+    <p class="small" style="text-align:center;margin-top:12px">Default: admin / 1234</p>
+  </div>
+</div>
+<header><h1>📋 Raid Report</h1><p>Supabase Cloud Backup - Lifetime Free</p></header>
+<div id="userbar" class="userbar hidden">
+  <span>👤 <b id="loggedUser"></b> <span id="cloudSyncBadge" class="badge badge-orange">Cloud: Not Connected</span></span>
+  <div style="display:flex;gap:6px"><button onclick="logout()" style="color:#b91c1c">Logout</button></div>
+</div>
+<nav>
+<button id="newBtn" class="active" onclick="show('new')">➕ New Entry</button>
+<button id="listBtn" onclick="show('list')">📑 Entries</button>
+<button id="cloudBtn" onclick="show('cloud')">☁️ Cloud</button>
+</nav>
+<main>
+<section id="new">
+<div class="card">
+<label>Date Of Raid</label><input id="date" type="date">
+<label>Name & Address of Entity</label><textarea id="entity"></textarea>
+<label>Description of Item Seized</label><textarea id="item"></textarea>
+<label>Complainant Name</label><input id="complainant">
+<label>Name of Accused Arrested</label><textarea id="accused"></textarea>
+<label>Police permission for raid given by</label><input id="permission">
+<label>Police Officials</label><textarea id="officials"></textarea>
+<label>FIR Registration no & section applied</label><textarea id="fir"></textarea>
+<label>Police Station Name</label><input id="station">
+<label>📷 JPG Photo</label>
+<div class="photo">
+<input id="photo" type="file" accept="image/*" capture="environment" onchange="previewPhoto(event)">
+<img id="preview" class="hidden"><div id="photoText" class="small">फोटो चुनें</div>
+</div>
+<input id="editId" type="hidden">
+<button id="saveBtn" class="primary" onclick="saveEntry()">💾 Save Entry</button>
+<button class="secondary" onclick="clearForm()">🧹 Clear</button>
+<div class="cloud-status" id="newCloudStatus">Cloud Connected होने पर हर Entry Supabase में auto-save होगी</div>
+</div>
+</section>
+<section id="list" class="hidden">
+<div class="card">
+<h3>📑 Saved Entries <span id="entryCount" class="badge badge-blue"></span></h3>
+<div id="entries"></div>
+<hr><h4>📦 Export</h4>
+<button class="primary" onclick="exportBackup()">💾 Full Backup (JSON)</button>
+<button class="secondary" onclick="exportExcel()">📊 Excel</button>
+<button class="secondary" onclick="exportCSV()">📤 CSV</button>
+</div>
+</section>
+<section id="cloud" class="hidden">
+<div class="card">
+<h3>☁️ Supabase Cloud Setup</h3>
+<div class="cloud-status">
+<b>Steps:</b><br>
+1. supabase.com > New Project बनाएं<br>
+2. Table Editor > New Table: <code>raid_reports</code> (id text primary, data jsonb)<br>
+3. Project Settings > API > URL + anon key copy करें<br>
+4. नीचे paste करें और Save करें
+</div>
+<label>Supabase Project URL</label>
+<input id="supUrl" type="url" placeholder="https://xyz.supabase.co">
+<label>Supabase anon Key</label>
+<textarea id="supKey" placeholder="eyJ..."></textarea>
+<label>Table Name</label>
+<input id="supTable" value="raid_reports">
+<button class="cloud" onclick="saveSupabaseConfig()">💾 Save Supabase Config</button>
+<button class="secondary" onclick="testSupabase()">🔍 Test Connection</button>
+<div id="cloudSetupStatus" class="cloud-status"></div>
+<hr>
+<h4>☁️ Cloud Actions</h4>
+<button class="cloud" onclick="saveAllToCloud()">☁️ Save All to Cloud</button>
+<button class="secondary" onclick="loadFromCloud()">📥 Load from Cloud</button>
+<button class="secondary" onclick="toggleAutoSync()" id="autoSyncBtn">🔄 Auto-Sync: OFF</button>
+<div id="cloudInfo" class="cloud-status"></div>
+<div id="cloudStatusList" class="cloud-status"></div>
+</div>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let photoData="";
+function $(id){return document.getElementById(id)}
+function show(tab){
+ document.querySelectorAll('section').forEach(s=>s.classList.add('hidden'));
+ document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+ $(tab).classList.remove('hidden');
+ $(tab+'Btn').classList.add('active');
+ if(tab==='list') render(); if(tab==='cloud') refreshCloudInfo();
+}
+function doLogin(){
+ const u=$('loginUser').value.trim(), p=$('loginPass').value.trim();
+ const savedU=localStorage.getItem('raidUser')||'admin', savedP=localStorage.getItem('raidPass')||'1234';
+ if(u===savedU && p===savedP){ localStorage.setItem('raidLogged','1'); $('loginOverlay').classList.add('hidden'); $('loggedUser').textContent=u; $('userbar').classList.remove('hidden'); refreshCloudInfo(); }
+ else alert('Wrong Username/Password');
+}
+function logout(){ localStorage.removeItem('raidLogged'); location.reload(); }
+function getEntries(){ try{return JSON.parse(localStorage.getItem('raidEntries')||'[]')}catch{return[]} }
+function setEntries(a){ localStorage.setItem('raidEntries', JSON.stringify(a)); }
+function previewPhoto(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev=>{ photoData=ev.target.result; $('preview').src=photoData; $('preview').classList.remove('hidden'); $('photoText').textContent=f.name; }; r.readAsDataURL(f); }
+function clearForm(){ ['date','entity','item','complainant','accused','permission','officials','fir','station','editId'].forEach(id=>{const el=$(id); if(el) el.value=''}); photoData=''; $('preview').classList.add('hidden'); $('saveBtn').textContent='💾 Save New Entry'; }
+function saveEntry(){
+ const entry={ id: $('editId').value || Date.now().toString(), date:$('date').value, entity:$('entity').value, item:$('item').value, complainant:$('complainant').value, accused:$('accused').value, permission:$('permission').value, officials:$('officials').value, fir:$('fir').value, station:$('station').value, photo:photoData, createdAt:new Date().toISOString() };
+ if(!entry.entity){ alert('Entity name bharo'); return; }
+ let all=getEntries(); const idx=all.findIndex(x=>x.id===entry.id); if(idx>=0) all[idx]=entry; else all.unshift(entry);
+ setEntries(all); clearForm(); alert('✅ Local me Save ho gaya'); render();
+ if(isAutoSyncOn()) saveAllToCloud(true);
+}
+function render(){
+ const all=getEntries(); $('entryCount').textContent=all.length;
+ const cont=$('entries'); if(!all.length){ cont.innerHTML='<div class="empty">Koi Entry nahi</div>'; return; }
+ cont.innerHTML=all.map(e=>`<div class="entry"><b>${e.date||''} - ${e.station||''}</b><br>${e.entity||''}<br><span class="small">${e.item||''}</span><br><button class="secondary" onclick="editEntry('${e.id}')">✏️ Edit</button> <button class="danger" onclick="delEntry('${e.id}')">🗑️ Delete</button></div>`).join('');
+}
+function editEntry(id){ const e=getEntries().find(x=>x.id===id); if(!e) return; $('editId').value=e.id; $('date').value=e.date||''; $('entity').value=e.entity||''; $('item').value=e.item||''; $('complainant').value=e.complainant||''; $('accused').value=e.accused||''; $('permission').value=e.permission||''; $('officials').value=e.officials||''; $('fir').value=e.fir||''; $('station').value=e.station||''; photoData=e.photo||''; if(photoData){ $('preview').src=photoData; $('preview').classList.remove('hidden'); } show('new'); $('saveBtn').textContent='💾 Update Entry'; }
+function delEntry(id){ if(!confirm('Delete?')) return; setEntries(getEntries().filter(x=>x.id!==id)); render(); }
+function exportBackup(){ const blob=new Blob([localStorage.getItem('raidEntries')||'[]'],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='raid_backup.json'; a.click(); }
+function exportCSV(){ const all=getEntries(); if(!all.length) return alert('No data'); const rows=[Object.keys(all[0]).join(',')]; all.forEach(r=>rows.push(Object.values(r).map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(','))); const blob=new Blob([rows.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='raid.csv'; a.click(); }
+function exportExcel(){ const all=getEntries(); if(!all.length) return alert('No data'); const ws=XLSX.utils.json_to_sheet(all.map(({photo,...rest})=>rest)); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Entries'); XLSX.writeFile(wb,'raid.xlsx'); }
+
+// Supabase
+function getSupConfig(){ const url=localStorage.getItem('raidSupabaseUrl'), key=localStorage.getItem('raidSupabaseKey'), tbl=localStorage.getItem('raidSupabaseTable')||'raid_reports'; if(url&&key) return {url,key,tbl}; return null; }
+function isCloudConfigured(){ return !!getSupConfig(); }
+function isAutoSyncOn(){ return localStorage.getItem('raidAutoSync')==='1'; }
+function saveSupabaseConfig(){
+ const url=$('supUrl').value.trim().replace(/\/$/,''), key=$('supKey').value.trim(), tbl=$('supTable').value.trim()||'raid_reports';
+ if(!url||!key) return alert('URL aur Key bharo');
+ localStorage.setItem('raidSupabaseUrl',url); localStorage.setItem('raidSupabaseKey',key); localStorage.setItem('raidSupabaseTable',tbl);
+ $('cloudSetupStatus').textContent='✅ Config Saved: '+tbl; refreshCloudInfo(); alert('✅ Supabase Config Saved');
+}
+async function testSupabase(){
+ const cfg=getSupConfig(); if(!cfg) return alert('Pehle config save karo');
+ $('cloudSetupStatus').textContent='⏳ Testing...';
+ try{ const res=await fetch(cfg.url+'/rest/v1/'+cfg.tbl+'?limit=1', {headers:{'apikey':cfg.key,'Authorization':'Bearer '+cfg.key}}); if(res.ok){ $('cloudSetupStatus').textContent='✅ Connected! Table: '+cfg.tbl; } else { $('cloudSetupStatus').textContent='❌ Failed: '+res.status+' '+await res.text(); } }catch(e){ $('cloudSetupStatus').textContent='❌ Error: '+e.message; }
+}
+async function saveAllToCloud(silent){
+ const cfg=getSupConfig(); if(!cfg){ if(!silent) { alert('Pehle Cloud Tab me Supabase Config save karo'); show('cloud'); } return; }
+ const all=getEntries(); if(!all.length) return alert('Local me koi entry nahi');
+ $('cloudStatusList').textContent='⏳ Cloud me save ho raha hai... '+all.length;
+ for(const e of all){
+   try{
+     await fetch(cfg.url+'/rest/v1/'+cfg.tbl, {
+       method:'POST',
+       headers:{'apikey':cfg.key,'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+       body: JSON.stringify({id:e.id, data:e})
+     });
+   }catch(err){ console.log(err); }
+ }
+ $('cloudStatusList').textContent='✅ '+all.length+' Entries Supabase me save ho gayi!'; if(!silent) alert('✅ Cloud Save ho gaya'); refreshCloudInfo();
+}
+async function loadFromCloud(){
+ const cfg=getSupConfig(); if(!cfg) return alert('Config nahi hai');
+ if(!confirm('Cloud se load kare? Local me add ho jayega')) return;
+ $('cloudStatusList').textContent='⏳ Load ho raha hai...';
+ try{
+   const res=await fetch(cfg.url+'/rest/v1/'+cfg.tbl+'?select=*', {headers:{'apikey':cfg.key,'Authorization':'Bearer '+cfg.key}});
+   const data=await res.json();
+   const imported=data.map(r=>r.data||r).filter(x=>x&&x.id);
+   if(!imported.length) return alert('Cloud me koi data nahi');
+   const existing=getEntries(); const map=new Map(); existing.forEach(e=>map.set(e.id,e)); imported.forEach(e=>map.set(e.id,e));
+   setEntries(Array.from(map.values())); render(); $('cloudStatusList').textContent='✅ '+imported.length+' Load ho gayi'; alert('✅ Load ho gayi');
+ }catch(e){ $('cloudStatusList').textContent='❌ '+e.message; }
+}
+function toggleAutoSync(){ const cur=isAutoSyncOn(); localStorage.setItem('raidAutoSync', cur?'0':'1'); refreshCloudInfo(); alert(cur?'Auto-Sync OFF':'Auto-Sync ON'); }
+function refreshCloudInfo(){
+ const cfg=getSupConfig(); if(cfg){ $('supUrl').value=cfg.url; $('supKey').value=cfg.key; $('supTable').value=cfg.tbl; $('cloudSyncBadge').textContent='Cloud: Connected ✅'; $('cloudSyncBadge').className='badge badge-green'; $('autoSyncBtn').textContent=isAutoSyncOn()?'🔄 Auto-Sync: ON':'🔄 Auto-Sync: OFF'; $('cloudInfo').innerHTML=`URL: <b>${cfg.url}</b><br>Table: <b>${cfg.tbl}</b><br>Local Entries: <b>${getEntries().length}</b>`; } else { $('cloudSyncBadge').textContent='Cloud: Not Connected'; $('cloudSyncBadge').className='badge badge-orange'; }
+}
+(function(){ if(localStorage.getItem('raidLogged')){ $('loginOverlay').classList.add('hidden'); $('userbar').classList.remove('hidden'); } refreshCloudInfo(); render(); })();
+</script>
+</body>
+</html>
